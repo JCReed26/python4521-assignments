@@ -127,12 +127,16 @@ def strategy_random50(p1_history, p2_history):
     return random.choice([cooperate, defect])
 
 def strategy_JamesCReed(p1_history, p2_history):
+    """copy opponents last move unless they keep defecting"""
     if len(p1_history) == 0:
         return cooperate
-    if p2_history[-1] == defect and strategy_opponentCooperate10Percentage(p1_history, p2_history) != defect:
-        return cooperate
-    else:
+    
+    # last 3 values all defect then defect
+    if len(p2_history) >= 3 and p2_history[-3:] == [defect, defect, defect]:
         return defect
+    
+    # regular return previous choice
+    return p2_history[-1]
 
 # A list of all strategy functions.
 strategies = [
