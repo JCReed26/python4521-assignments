@@ -41,6 +41,7 @@ def get_top_n(counter, n=30):
     cutoff = most_common[n - 1][1]
     return [item for item in most_common if item[1] >= cutoff]
 
+# For larger log sets: split logs in half and process each half in a separate thread
 def split_count_logs(logs):
     """Divide logs into host and resource lists."""
     host_ips, requested_resource = [], []
@@ -60,10 +61,12 @@ def convert_date(date_str):
     month = f"{MONTH_NUMS[month_str]:02d}"
     return f"{month}/{day}/{year}"
 
+# For larger log sets: split logs in half and process each half in a separate thread
 def in_range_list(logs, start_date, end_date):
     """Returns a list of logs within specified date range."""
     return [log for log in logs if start_date <= log.date <= end_date]
 
+# For larger log sets: split logs in half and process each half in a separate thread
 def format_logs(logs):
     """Returns a list of LogEntry objects from raw log lines."""
     formatted_logs = []
