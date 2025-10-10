@@ -104,7 +104,116 @@ def computeReward(i, j):
         neighbor_action = actionGrid[ni][nj]
         total_reward += payoffMatrix[action][neighbor_action]
     return total_reward
+# ------------------------------------------------------
 
+from multiprocessing import Pool, Array, cpu_count
+
+G_SIZE = None
+G_ACTION = None
+G_REWARD = None
+G_WORK = None
+
+def idx(i,j,n):
+    return i*n+j
+
+def create_shared(size, actionBuf, rewardBuf, workBuf):
+    global G_SIZE, G_ACTION, G_REWARD, G_WORK
+    G_SIZE = size
+    G_ACTION = actionBuf
+    G_REWARD = rewardBuf
+    G_WORK = workBuf
+
+def reward_chunk(bound):
+    start, end = bound
+    n = G_SIZE
+
+    for i in range(start, end):
+        base = i * n
+
+    for j in range(n):
+        a = G_ACTION[base + j]
+        total = 0
+
+    for (ni, nj) in getNeighbors(i, j, n):
+        total += payoffMatrix[a][G_ACTION[idx(ni, nj, n)]]
+        G_REWARD[base + j] = total
+
+def update_chunk(bound):
+    start, end = bound
+    n = G_SIZE
+
+    for i in range(start, end):
+        base = i * n
+
+    for j in range(n):
+        best_reward = G_REWARD[base + j]
+        best_action = G_ACTION[base + j]
+
+    for (ni, nj) in getNeighbors(i, j, n):
+        r = G_REWARD[idx(ni, nj, n)]
+        if r > best_reward:
+            best_reward = r
+            best_action = G_ACTION[idx(ni, nj, n)]
+        G_WORK[base + j] = best_action
+
+def split_bounds(nrows, nprocs):
+    # Even-ish partition of rows into contiguous blocks
+    size = (nrows + nprocs - 1) // nprocs
+    bounds = []
+    for i in range(nprocs):
+        s = i * size
+        e = min(nrows, s + size)
+        if s < e:
+            bounds.append((s, e))
+
+    return bounds
+
+def run_sim_sharedMP(initF = initializeActionGrid3, size=8, steps=10, fName = 'sharedMP.txt'):
+    global actionGrid, rewardGrid, workGrid
+    actionGrid = makeShape(size, cooperate)
+    rewardGrid = makeShape(size, 0)
+    workGrid = makeShape(size, cooperate)
+
+    initF(size)
+
+    print(f"{initF.__name__}, size={size}, steps={steps}, fName={fName}")
+
+    total = size * size
+    actionSH = Array('i', total, lock=False)
+    rewardSH = Array('i', total, lock=False)
+    workSH = Array('i', total, lock=False)
+
+    k = 0
+    for i in range(size):
+        for j in range(size):
+            actionSH[k] = actionGrid[i][j]
+            k += 1
+
+    nprocs = min(cpu_count(), size) or 1
+    bounds = split_bounds(size, nprocs)
+
+    with Pool(processes=nprocs, initializer=create_shared, initargs=(size, actionSH, rewardSH, workSH)) as pool:
+        for ss in range(steps):
+            pool.map(reward_chunk, bounds)
+
+            pool.map(update_chunk, bounds)
+
+            for q in range(total):
+                actionSH[q] = workSH[q]
+
+            coop = 0 
+            for q in range(total):
+                if actionSH[q] == cooperate:
+                    coop += 1
+            defectors = total - coop 
+
+            print(f"step {ss}: {coop} cooperates, {defectors} defects")
+
+    with open(fName, "w") as f:
+        for i in range(gridSize):
+            f.write(f"{i}: {actionGrid[i]}\n")
+
+# ------------------------------------------------------
 # Run simulation
 def runSimulation(initF = initializeActionGrid3, size=8, steps=10, fName = 'output.txt'):
     global actionGrid
@@ -160,12 +269,14 @@ def runSimulation(initF = initializeActionGrid3, size=8, steps=10, fName = 'outp
 
 #runSimulation(initF = initializeActionGrid0, size=gridSize, steps=steps, fName = f'output_grid0_{gridSize}_{steps}_seq.txt')
 
-runSimulation(initF = initializeActionGrid1, size=gridSize, steps=steps, fName = f'output_grid1_{gridSize}_{steps}_seq.txt')
+if __name__ == '__main__':
+    #runSimulation(initF = initializeActionGrid1, size=gridSize, steps=steps, fName = f'output_grid1_{gridSize}_{steps}_seq.txt')
+    run_sim_sharedMP(initF = initializeActionGrid1, size=gridSize, steps=steps, fName = f'output_grid1_{gridSize}_{steps}_MP.txt')
 
-#runSimulation(initF = initializeActionGrid2, size=gridSize, steps=steps, fName = f'output_grid2_{gridSize}_{steps}_seq.txt')
+    #runSimulation(initF = initializeActionGrid2, size=gridSize, steps=steps, fName = f'output_grid2_{gridSize}_{steps}_seq.txt')
 
-#runSimulation(initF = initializeActionGrid3, size=gridSize, steps=steps, fName = f'output_grid3_{gridSize}_{steps}_seq.txt')
+    #runSimulation(initF = initializeActionGrid3, size=gridSize, steps=steps, fName = f'output_grid3_{gridSize}_{steps}_seq.txt')
 
-#runSimulation(initF = initializeActionGrid4, size=gridSize, steps=steps, fName = f'output_grid4_{gridSize}_{steps}_seq.txt')
+    #runSimulation(initF = initializeActionGrid4, size=gridSize, steps=steps, fName = f'output_grid4_{gridSize}_{steps}_seq.txt')
 
 

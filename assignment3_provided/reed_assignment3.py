@@ -162,9 +162,79 @@ def count_worker(start, end, actionGrid, outQ):
                 d += 1
     outQ.put((c, d))
 
+def rewards_row(i, size, A):
+    row = []
+    for j in range(size):
+        a = A[i][j]
+        total = 0
+        for (ni, nj) in getNeighbors(i, j, size):
+            total += payoffMatrix[a][A[ni][nj]]
+        row.append(total)
+    return (i, row)
+
+def update_row(i, size, A, R):
+    row = []
+    for j in range(size):
+        best_reward = R[i][j]
+        best_action = A[i][j]
+        for (ni,nj) in getNeighbors(i, j, size):
+            r = R[ni][nj]
+            if r > best_reward:
+                best_reward = r
+                best_action = A[ni][nj]
+        row.append(best_action)
+    return (i, row)
+
+
 #---------------------------------------------------------------
 #  MP Simulation
 #---------------------------------------------------------------
+from multiprocessing import Pool
+def runSimulation_pool(initF = initializeActionGrid3, size=8, steps=10, fName = 'mp_out.txt'):
+    global actionGrid
+    global rewardGrid
+    global workGrid
+    global gridSize
+
+    gridSize = size
+    actionGrid = makeShape(size, cooperate)
+    rewardGrid = makeShape(size, 0)
+    workGrid = makeShape(size, cooperate)
+
+    initF(size)
+
+    print(f"{initF.__name__}, size={size}, steps={steps}, fName={fName}")
+
+    nprocs = min(cpu_count(), gridSize)
+
+    with Pool(processes=nprocs) as pool:
+        # Parallel Portion
+        for ss in range(steps):
+
+            A = [row[:] for row in actionGrid]
+            # rewards 
+            rewards = pool.starmap(rewards_row, [(i, gridSize, A) for i in range(gridSize)])
+            for (i, row) in rewards:
+                rewardGrid[i] = row
+            
+            R = [row[:] for row in rewardGrid]
+            # updates
+            updates = pool.starmap(update_row, [(i, gridSize, A, R) for i in range(gridSize)])
+            for (i, row) in updates:
+                workGrid[i] = row
+
+            # swap 
+            for i in range(size):
+                actionGrid[i] = workGrid[i][:]
+
+            # count
+            count1 = sum(a == cooperate for row in actionGrid for a in row)
+            count2 = size*size - count1
+            print(f"step {ss}: {count1} cooperates, {count2} defects")
+
+    with open(fName, "w") as f:
+        for i in range(gridSize):
+            f.write(f"{i}: {actionGrid[i]}\n")
 
 def runSimulation_mp(initF = initializeActionGrid3, size=8, steps=10, fName = 'mp_out.txt'):
     global actionGrid
@@ -187,62 +257,93 @@ def runSimulation_mp(initF = initializeActionGrid3, size=8, steps=10, fName = 'm
         nprocs = cpu_count()
 
         # rewards
+        bounds = split_rows(gridSize, nprocs)
         rq = Queue()
-        procs = [] 
+        rq_procs = [] 
         # create reward processes
-        for (s,e) in split_rows(gridSize, nprocs):
+        for (s,e) in bounds:
             p = Process(target=rewards_worker, args=(s, e, actionGrid, gridSize, rq))
             p.start()
-            procs.append(p)
+            rq_procs.append(p)
 
-        for p in procs:
+        # Drain before join to avoid deadlocks
+        seen = [False] * gridSize # track written rows for consistency
+        for _ in bounds:
+            chunk = rq.get()
+            for (i, row) in chunk:
+                if not (0 <= i < gridSize):
+                    raise ValueError(f"Bad row index {i}")
+                if seen[i]:
+                    raise ValueError(f"Duplicate row {i} in rewards")
+                rewardGrid[i] = row
+                seen[i] = True
+        if not all(seen):
+            missing = [i for i, v in enumerate(seen) if not v]
+            raise RuntimeError(f"Missing reward rows: {missing}")
+
+        for p in rq_procs:
             p.join()
 
-        # handle finishing processes
-        while not rq.empty():
-            for (i,row) in rq.get():
-                workGrid[i] = row
+        rq.close()
+        rq.join_thread()
 
         # -------------------------------------------
 
         # update 
         uq = Queue()
-        procs = [] 
+        uq_procs = [] 
         # create update processes
-        for (s,e) in split_rows(gridSize, nprocs):
+        for (s,e) in bounds:
             p = Process(target=update_worker, args=(s, e, actionGrid, rewardGrid, gridSize, uq))
             p.start()
-            procs.append(p)
+            uq_procs.append(p)
         
-        for p in procs:
-            p.join()
-        
-        # handle finishing processes
-        while not uq.empty():
-            for (i, row) in uq.get():
+        seen = [False] * gridSize
+        for _ in bounds:
+            chunk = uq.get()
+            for (i, row) in chunk:
+                if not (0 <= i < gridSize):
+                    raise ValueError(f"Bad row index {i}")
+                if seen[i]:
+                    raise ValueError(f"Duplicate row {i} in update")
                 workGrid[i] = row
+                seen[i] = True
+        if not all(seen):
+            missing = [i for i, v in enumerate(seen) if not v]
+            raise RuntimeError(f"Missing work rows: {missing}")
+        
+        for p in uq_procs:
+            p.join()
+
+        uq.close()
+        uq.join_thread()
+
+        for i in range(gridSize):
+            for j in range(gridSize):
+                actionGrid[i][j] = workGrid[i][j]
 
         # -------------------------------------------------
 
         # count 
         cq = Queue()
-        procs = []
+        cq_procs = []
         # create count process
-        for (s,e) in split_rows(gridSize, nprocs):
+        for (s,e) in bounds:
             p = Process(target=count_worker, args=(s, e, actionGrid, cq))
             p.start()
-            procs.append(p)
+            cq_procs.append(p)
 
-        for p in procs:
-            p.join()
-
-        # handle finishing processes and collect count
-        count1 = 0
-        count2 = 0
-        while not cq.empty():
+        count1 = count2 = 0
+        for _ in bounds:
             c, d = cq.get()
             count1 += c
             count2 += d
+
+        for p in cq_procs:
+            p.join()
+
+        cq.close()
+        cq.join_thread()
 
         print(f"step {ss}: {count1} cooperates, {count2} defects")
 
@@ -319,8 +420,15 @@ def runSimulation(initF = initializeActionGrid3, size=8, steps=10, fName = 'outp
 #    runSimulation(initF = initializeActionGrid4, size=gridSize, steps=steps, fName = f'output_grid4_{gridSize}_{steps}_seq.txt')
 
 # multiprocess simulations
+#if __name__ == '__main__':
+#    runSimulation_mp(initF = initializeActionGrid1, size=gridSize, steps=steps, fName = f'output_grid1_{gridSize}_{steps}_seq.txt')
+#    runSimulation_mp(initF = initializeActionGrid2, size=gridSize, steps=steps, fName = f'output_grid2_{gridSize}_{steps}_seq.txt')
+#    runSimulation_mp(initF = initializeActionGrid3, size=gridSize, steps=steps, fName = f'output_grid3_{gridSize}_{steps}_seq.txt')
+#    runSimulation_mp(initF = initializeActionGrid4, size=gridSize, steps=steps, fName = f'output_grid4_{gridSize}_{steps}_seq.txt')
+
+# Pool multiprocess
 if __name__ == '__main__':
-    runSimulation_mp(initF = initializeActionGrid1, size=gridSize, steps=steps, fName = f'output_grid1_{gridSize}_{steps}_seq.txt')
-    runSimulation_mp(initF = initializeActionGrid2, size=gridSize, steps=steps, fName = f'output_grid2_{gridSize}_{steps}_seq.txt')
-    runSimulation_mp(initF = initializeActionGrid3, size=gridSize, steps=steps, fName = f'output_grid3_{gridSize}_{steps}_seq.txt')
-    runSimulation_mp(initF = initializeActionGrid4, size=gridSize, steps=steps, fName = f'output_grid4_{gridSize}_{steps}_seq.txt')
+    runSimulation_pool(initF = initializeActionGrid1, size=gridSize, steps=steps, fName = f'output_grid1_{gridSize}_{steps}_pool.txt')
+    runSimulation_pool(initF = initializeActionGrid2, size=gridSize, steps=steps, fName = f'output_grid2_{gridSize}_{steps}_pool.txt')
+    runSimulation_pool(initF = initializeActionGrid3, size=gridSize, steps=steps, fName = f'output_grid3_{gridSize}_{steps}_pool.txt')
+    runSimulation_pool(initF = initializeActionGrid4, size=gridSize, steps=steps, fName = f'output_grid4_{gridSize}_{steps}_pool.txt')
