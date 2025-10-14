@@ -166,18 +166,48 @@ def reward_chunk(bound):
 def update_chunk(bound):
     start, end = bound
     n = G_SIZE
+    GA = G_ACTION   #local
+    GR = G_REWARD   #local
+    GW = G_WORK     #local
 
     for i in range(start, end):
         base = i * n
+        north_row = (i - 1) * n
+        south_row = (i + 1) * n
+
         for j in range(n):
-            best_reward = G_REWARD[base + j]
-            best_action = G_ACTION[base + j]
-            for (ni, nj) in getNeighbors(i, j, n):
-                r = G_REWARD[idx(ni, nj, n)]
+            #start at self
+            best_reward = GR[base+j]
+            best_action = GA[base+j]
+
+            # north
+            if i > 0: 
+                r = GR[north_row + j]
                 if r > best_reward:
                     best_reward = r
-                    best_action = G_ACTION[idx(ni, nj, n)]
-            G_WORK[base + j] = best_action
+                    best_action = GA[north_row + j]
+            # south
+            if i + 1 < n: 
+                r = GR[south_row + j]
+                if r > best_reward:
+                    best_reward = r
+                    best_action = ga[south_row + j]
+            # east
+            if j + 1 < n:
+                idx_e = base + (j + 1)
+                r = GR[idx_e]
+                if r > best_reward:
+                    best_reward = r
+                    best_action = GA[idx_e]
+            # west 
+            if j > 0: 
+                idx_w = base + (j - 1)
+                r = GR[idx_w]
+                if r > best_reward:
+                    best_reward = r
+                    best_action = GA[idx_w]
+            
+            GW[base + j] = best_action
 
 def split_bounds(nrows, nprocs):
     size = (nrows + nprocs - 1) // nprocs
