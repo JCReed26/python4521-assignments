@@ -1,0 +1,28 @@
+A program receives at most 6 points if it generates a runtime error.
+• Include the basic header (template available on the course website) for the assignment.
+Name your program lastname_firstinitial_assignment3.py. Report the timing and
+speedup (compared to the sequential version) of your program using 1, 2, 4, 8, and 16
+processes. (10 points)
+• Your parallel implementation must produce the same output for a 10x10 grid and 20
+iterations using 2 processes. (10 points)
+• Your parallel implementation must produce the same output for a 10x10 grid and 20
+iterations using 4 processes. (10 points)
+• Your parallel implementation must produce the same output for a 1024x1024 grid and
+20 iterations using 2 processes, and the program must achieve a 20% speedup
+compared to the sequential program. (10 points)
+• Your parallel implementation must produce the same output for a 1024x1024 grid and
+20 iterations using 4 processes, and the program must achieve a 20% speedup
+compared to the sequential program. (10 points)
+• Your parallel implementation must produce the same output for a 1024x1024 grid and
+20 iterations using any number of processes (nprocs ≤ grid_size or ≤ 16), and the
+program must achieve a 4× speedup compared to the sequential program. (10 points)
+• Your program will be tested on another grid size. 20 points will be deducted if the code
+passes the 10x10 and 1024x1024 grid tests but fails this test.
+• 8 extra points for a program that earns all 60 regular points, with each process using
+only O(grid_size × grid_size / nprocs) memory.
+• 8 extra points for an OpenMP implementation that works correctly for all grid sizes and
+achieves at least a 4× speedup for some grid size. To receive the extra points, you must
+also specify how the speedup was achieved (compared to either a sequential C version
+or your OpenMP code using 1 thread).
+• Extra points: The first person to report a bug in the sample program will receive 3 extra
+points.

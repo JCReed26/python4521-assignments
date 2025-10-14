@@ -21,12 +21,16 @@ payoffMatrix = [
 
 gridSize = 10
 steps = 10
+nprocs_opt = None
 
 if (len(sys.argv) > 1):
     gridSize = int(sys.argv[1])
 
 if (len(sys.argv) > 2):
     steps = int(sys.argv[2])
+
+if (len(sys.argv) > 3):
+    nprocs_opt = int(sys.argv[3])
     
 actionGrid = []
 rewardGrid = []
@@ -146,7 +150,7 @@ def reward_chunk(bound):
             total = 0
             for (ni, nj) in getNeighbors(i, j, n):
                 total += payoffMatrix[a][G_ACTION[idx(ni, nj, n)]]
-                G_REWARD[base + j] = total
+            G_REWARD[base + j] = total
 
 def update_chunk(bound):
     start, end = bound
@@ -162,7 +166,7 @@ def update_chunk(bound):
                 if r > best_reward:
                     best_reward = r
                     best_action = G_ACTION[idx(ni, nj, n)]
-                G_WORK[base + j] = best_action
+            G_WORK[base + j] = best_action
 
 def split_bounds(nrows, nprocs):
     size = (nrows + nprocs - 1) // nprocs
@@ -176,7 +180,7 @@ def split_bounds(nrows, nprocs):
     return bounds
 
 def run_sim_sharedMP(initF = initializeActionGrid3, size=8, steps=10, fName = 'sharedMP.txt'):
-    global actionGrid, rewardGrid, workGrid, gridSize
+    global actionGrid, rewardGrid, workGrid, gridSize, nprocs_opt
     actionGrid = makeShape(size, cooperate)
     rewardGrid = makeShape(size, 0)
     workGrid = makeShape(size, cooperate)
@@ -187,9 +191,9 @@ def run_sim_sharedMP(initF = initializeActionGrid3, size=8, steps=10, fName = 's
     print(f"{initF.__name__}, size={size}, steps={steps}, fName={fName}")
 
     total = size * size
-    actionSH = Array('i', total, lock=False)
-    rewardSH = Array('i', total, lock=False)
-    workSH = Array('i', total, lock=False)
+    actionSH = Array('b', total, lock=False)
+    rewardSH = Array('b', total, lock=False)
+    workSH = Array('b', total, lock=False)
 
     k = 0
     for i in range(size):
@@ -197,7 +201,8 @@ def run_sim_sharedMP(initF = initializeActionGrid3, size=8, steps=10, fName = 's
             actionSH[k] = actionGrid[i][j]
             k += 1
 
-    nprocs = min(cpu_count(), size) or 1
+    procs_requested = nprocs_opt if nprocs_opt is not None else cpu_count()
+    nprocs = max(1, min(procs_requested, size))
     bounds = split_bounds(size, nprocs)
 
     # starts a pool of the min amount of worker process either needed or able to create 
