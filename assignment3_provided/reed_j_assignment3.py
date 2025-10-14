@@ -253,13 +253,11 @@ def run_sim_sharedMP(initF = initializeActionGrid3, size=8, steps=10, fName = 's
 
             pool.map(update_chunk, bounds)
 
-            for q in range(total):
-                actionSH[q] = workSH[q]
-
             coop = 0 
             for q in range(total):
-                if actionSH[q] == cooperate:
-                    coop += 1
+                a = workSH[q]
+                actionSH[q] = a
+                coop += (1 if a == cooperate else 0)
             defectors = total - coop 
 
             print(f"step {ss}: {coop} cooperates, {defectors} defects")
