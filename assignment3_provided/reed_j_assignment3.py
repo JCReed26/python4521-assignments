@@ -142,15 +142,26 @@ def create_shared(size, actionBuf, rewardBuf, workBuf):
 def reward_chunk(bound):
     start, end = bound
     n = G_SIZE
+    p = payoffMatrix    #local
+    GA = G_ACTION       #local
+    GR = G_REWARD       #local
 
     for i in range(start, end):
         base = i * n
-        for j in range(n):
-            a = G_ACTION[base + j]
+        north_index = (i - 1) * n
+        south_index = (i + 1) * n
+        for j in range(n):  # gets total writes once
+            a = GA[base+j]
             total = 0
-            for (ni, nj) in getNeighbors(i, j, n):
-                total += payoffMatrix[a][G_ACTION[idx(ni, nj, n)]]
-            G_REWARD[base + j] = total
+            # north 
+            if i > 0: total += p[a][GA[north_index + j]]
+            # south
+            if i + 1 < n: total += p[a][GA[south_index + j]]
+            # east 
+            if j + 1 < n: total += p[a][GA[base + (j + 1)]]
+            # west
+            if j > 0: total += p[a][GA[base + (j - 1)]]
+            GR[base+j] = total 
 
 def update_chunk(bound):
     start, end = bound
