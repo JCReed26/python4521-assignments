@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import re
 import sys
 import time
 import subprocess
 from pathlib import Path
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 
 
 def run_cmd(cmd: List[str]) -> Tuple[int, str, str, float]:
@@ -55,6 +56,41 @@ def run_par(par_path: str, size: int, steps: int, nprocs: int) -> Tuple[float, D
     return dt, outputs
 
 
+def check_header_and_name(par_path: str) -> Tuple[bool, List[str]]:
+    """Check the basic header presence and filename pattern.
+
+    - Filename: lastname_firstinitial_assignment3.py (lowercase) -> ^[a-z]+_[a-z]_assignment3\.py$
+    - Header: Presence of 'Name:' and 'Assignment: 3' anywhere in the first 40 lines.
+    """
+    msgs: List[str] = []
+    ok = True
+
+    # Name pattern
+    base = os.path.basename(par_path)
+    if not re.match(r"^[a-z]+_[a-z]_assignment3\.py$", base):
+        msgs.append(f"filename '{base}' does not match lastname_firstinitial_assignment3.py")
+        ok = False
+
+    # Header check (best-effort)
+    try:
+        with open(par_path, "r", encoding="utf-8", errors="ignore") as f:
+            head = "".join([next(f) for _ in range(40)])
+        if "Name:" not in head:
+            msgs.append("missing 'Name:' in header (first 40 lines)")
+            ok = False
+        if "Assignment:" not in head or "Assignment: 3" not in head:
+            msgs.append("missing or incorrect 'Assignment: 3' in header (first 40 lines)")
+            ok = False
+    except StopIteration:
+        # file < 40 lines; 'head' still collected correctly
+        pass
+    except Exception as e:
+        msgs.append(f"header check error: {e}")
+        ok = False
+
+    return ok, msgs
+
+
 def print_header(title: str):
     print(f"\n== {title} ==")
 
@@ -64,8 +100,9 @@ def main():
     parser.add_argument("parallel", help="Path to the parallel implementation (e.g., reed_j_assignment3.py)")
     parser.add_argument("sequential", help="Path to the sequential implementation (e.g., seq_assignment3.py)")
     parser.add_argument("--steps", type=int, default=20, help="Number of steps/iterations (default: 20)")
-    parser.add_argument("--full", action="store_true", help="Run full suite (includes 1024x1024 correctness and speedups)")
+    parser.add_argument("--full", action="store_true", help="Run full suite (includes 1024x1024 correctness, speedups, and alt-size)")
     parser.add_argument("--quick", action="store_true", help="Run only quick correctness (10x10 with 2 and 4 procs)")
+    parser.add_argument("--alt-size", type=int, default=256, help="Alternate grid size for extra correctness test (default: 256)")
     args = parser.parse_args()
 
     # Default behavior: quick unless --full is provided
@@ -83,11 +120,22 @@ def main():
         sys.exit(2)
 
     steps = int(args.steps)
+    cpu_ct = os.cpu_count() or 1
+    print(f"cpu_count: {cpu_ct}")
+    # Header + filename check
+    ok_header, header_msgs = check_header_and_name(par_path)
+    print_header("Header & Naming")
+    if ok_header:
+        print("PASS: filename pattern and basic header present")
+    else:
+        print("FAIL:")
+        for m in header_msgs:
+            print(f" - {m}")
 
     # Quick suite: 10x10 correctness for nprocs 2 and 4
     if quick:
         size = 10
-        print_header(f"Correctness: {size}x{size}, steps={steps}, nprocs=2 and 4")
+        print_header(f"Correctness: {size}x{size}, steps={steps}, nprocs=2 and 4 and 8")
         # Run sequential once
         try:
             t_seq_10, seq_out_10 = run_seq(seq_path, size, steps)
@@ -95,8 +143,9 @@ def main():
             print(str(e), file=sys.stderr)
             sys.exit(1)
 
-        for req_n in (2, 4):
+        for req_n in (2, 4, 8):
             n = cap_nprocs(req_n, size, os.cpu_count() or 1)
+            print(f"running parallel: requested={req_n}, effective={n} (cpu_count={cpu_ct})")
             try:
                 t_par, par_out = run_par(par_path, size, steps, n)
             except Exception as e:
@@ -122,8 +171,9 @@ def main():
 
         # Correctness and performance for nprocs 2 and 4
         speedups: Dict[int, float] = {}
-        for req_n in (2, 4):
+        for req_n in (2, 4, 8):
             n = cap_nprocs(req_n, size, os.cpu_count() or 1)
+            print(f"running parallel: requested={req_n}, effective={n}, (cpu_count={cpu_ct})")
             try:
                 t_par, par_out = run_par(par_path, size, steps, n)
             except Exception as e:
@@ -132,6 +182,7 @@ def main():
             per_init, overall = compare_outputs(seq_out_1024, par_out)
             sp = (t_seq_1024 / t_par) if t_par > 0 else float('inf')
             speedups[n] = sp
+            print(f"parallel time (nprocs={n}): {t_par:.3f}s")
             print(f"nprocs={n}: overall={'PASS' if overall else 'FAIL'}; speedup={sp:.2f}x; details="
                   f"init1={'ok' if per_init[1] else 'x'}, init2={'ok' if per_init[2] else 'x'}, "
                   f"init3={'ok' if per_init[3] else 'x'}, init4={'ok' if per_init[4] else 'x'}")
@@ -159,7 +210,7 @@ def main():
 
         # Summarize speedup checks
         # 20% speedup for nprocs=2 and 4
-        for req in (2, 4):
+        for req in (2, 4, 8):
             n = cap_nprocs(req, size, os.cpu_count() or 1)
             sp = speedups.get(n)
             if sp is None:
@@ -171,9 +222,28 @@ def main():
         any_4x = any(sp >= 4.0 for sp in speedups.values())
         print(f"any nprocs >=4.00x: {'PASS' if any_4x else 'FAIL'}")
 
+        # Alternate grid size correctness (penalty if fails)
+        alt = int(args.alt_size)
+        print_header(f"Alternate Size Correctness: {alt}x{alt}, steps={steps}, nprocs=2 and 4")
+        try:
+            t_seq_alt, seq_out_alt = run_seq(seq_path, alt, steps)
+        except Exception as e:
+            print(str(e), file=sys.stderr)
+            sys.exit(1)
+        for req_n in (2, 4, 8):
+            n = cap_nprocs(req_n, alt, os.cpu_count() or 1)
+            try:
+                t_par, par_out = run_par(par_path, alt, steps, n)
+            except Exception as e:
+                print(str(e), file=sys.stderr)
+                sys.exit(1)
+            per_init, overall = compare_outputs(seq_out_alt, par_out)
+            print(f"nprocs={n}: overall={'PASS' if overall else 'FAIL'}; details="
+                  f"init1={'ok' if per_init[1] else 'x'}, init2={'ok' if per_init[2] else 'x'}, "
+                  f"init3={'ok' if per_init[3] else 'x'}, init4={'ok' if per_init[4] else 'x'}")
+
     print("\nDone.")
 
 
 if __name__ == "__main__":
     main()
-
