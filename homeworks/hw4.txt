@@ -1,0 +1,91 @@
+COP4521 Homework 4
+
+Name: James Reed               FSU login: jcr22e
+
+
+1) (10 points) Explain network protocol and service interface.
+
+    - A network protocol governs how two entities or different machines interact. 
+    - A service interface is interactions with a service on the same machine. 
+        This is to help abstract and avoid any complexity by utilizing layering.
+
+
+2) (20 points) List four types of network services. Give all possible
+types of services that can result in the following scenario: the
+sender sends 1, 2, 3, 4, 5 and the receiver receives 1, 2, 3. 
+
+    - Reliable connection-oriented, Reliable connentionless, Unreliable connection-oriented, Unreliable connentionless
+    - Unreliable connection-oriented and Unreliable connentionless since both allow for packet loss that can also show up
+        in the wrong order.
+
+
+3) (10 points) List the seven layers in the ISO/OSI reference model, and
+briefly describe the main functionality in each layer.
+
+    - Physical layer: transfers bits over physical link
+    - Data link layer: transfers frames between directly connected entities 
+    - Network layer: routes packets to a possibly disconnected destination
+    - Transport layer: achieves end to end communication
+    - Session layer: allows for users to have personalized experiences
+    - Presentation layer: general solutions for users
+    - Application layer: variety of commonly used protocols
+
+
+4) (10 points) List the four layers in the TCP/IP reference model, and
+briefly describe the main functionality in each layer.
+
+    - Application layer (ssh, DNS, HTTP, FTP) - the client through the socket
+    - Transport layer (TCP, UDP) - for sending data packets across the network reliably and unreliably
+    - Internet layer(IP) - network address utilizing the internet protocol
+    - Host to network - data link through wire like an ethernet 
+
+
+5) (20 points)  A computer is connected to a network using a 100Mbps
+Ethernet link. An Ethernet frame includes all headers. The header sizes are:
+
+  - Ethernet header: 14 bytes
+  - IP header: 20 bytes
+  - TCP header: 20 bytes
+
+Assuming the computer continuously sends 500-bytes frames, and there are
+no retransmissions or losses, what is the maximum end-to-end throughput
+(in Mbps) that the computer can achieve at the application layer?
+
+    - frame - headers / frame_size * link_bandwidth
+    - 500 - 54 = 446/500=0.892x100,000,000=89,200,00
+    = 89.2Mbps
+
+
+6) (10 points) Ashley was excited to get the 1Gbps Internet service.
+She performed an Internet speed test for the downlink on her PS5,
+which indicated that for the speed test, 500MB data was sent. When the
+test was done, it was reported that the downlink speed was 200Mbps.
+How much time did it take to perform the speed test?
+
+    - 500MB * 8bits/byte = 4000bits / 200bits/second 
+    = 20 seconds
+
+
+7) (10 points) Michael just upgraded to a new Internet Service Provider that
+provides 100Gbps bandwidth from his old 10Gbps Internet access. Based only on
+this information, will ALL network applications run better with this new
+Internet Service Provider? Briefly justify your answer. 
+
+    - No not all network applications run better with the new provider. This is due to 
+    network latency and propagation delay which overall will keep the network slow and 
+    limited to the speed of the slowest link.
+
+
+8) (10 points) Describe the control flow of major socket function calls
+in a sequential server program and in a network client program.
+
+    - In a network client program, the network client is an active socket that initiates 
+    connection to a server. This is done through creating a socket, connecting, send/recv,
+    and closing the socket.
+    - In a sequential server program, uses a passive socket that waits for and accepts 
+    connections, but only one at a time. This is done by creating a socket object binding it 
+    to a specific address and port like a phone number, then listen to make the socket 
+    ready for connections and this will loop forever until a connection is accepted where 
+    the accepted active socket will send/recv and close when the connection closes or a 
+    new connection is accepted.
+
