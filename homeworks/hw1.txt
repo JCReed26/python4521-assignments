@@ -1,1 +1,201 @@
-still need to bring in
+COP4521 Homework 1
+
+Name: James Reed           FSU login: jcr22e
+
+1 (10 points). The content of file aa.py is as follows:
+--
+print("aa.py Top level", __name__)
+def hello():
+    print("Hello from", __name__)
+--
+
+The content of file bb.py is as follows:
+--
+import aa
+
+print("bb.py Top level", __name__)
+aa.hello()
+--
+
+What is the output when we run bb with 'python3 bb.py' on linprog? (5 points)
+Explain why each line is printed as it is (5 points)
+
+<--------------------------->
+1.1
+aa.py Top level aa 
+bb.py Top level __main__
+Hello from aa
+
+1.2
+python is interpreted line by line thus when 'aa' is imported at the top of
+'bb.py' the print statement runs printing 'aa.py Top level __name__'
+the __name__ refers to the name of the file being 'aa' which differs
+from __name__ in 'bb.py' which prints as '__main__' since 'bb.py' is the 
+main executed file in 'python3 bb.py'. The final line in the output of
+'Hello from aa' comes from calling the hello function in the 'aa.py' file
+imported and interpreted in the first line of 'bb.py'
+
+<--------------------------->
+
+
+2 (10 points). Consider the following code segment:
+
+def addObj(a, b):
+    a.append(b)
+    print('Inside 1: a = ', a)
+    a = a + [b]
+    print('Inside 2: a = ', a)
+
+lst = [1, 2, 3]
+addObj(lst, 100)
+print('Outside: lst = ', lst)
+
+What is the output when the code segment is executed? (5 points)
+Explain why each line is printed as it is (5 points)
+
+<--------------------------->
+2.1 
+
+Inside 1: a = [1, 2, 3, 100]
+Inside 2: a = [1, 2, 3, 100, 100]
+Outside: lst = [1, 2, 3, 100]
+
+2.2
+
+original list gets 100 appended and printed output
+the newly updated list gets another list of [b] added. this puts 
+another 100 at the end of the list the original list was appended 100 but since 'a' was 
+reassigned in the 3rd line of the addObj function the extra 100 wasnt added
+to the outside list creating the outside list printout to match the inside 1 printout
+
+<--------------------------->
+
+
+3. (10 points) Let a function prototype be
+
+def foo(arg1, arg2, arg3, arg4 = 1, arg5 = "one"):
+
+Which of the following function calls are valid in python:
+
+foo('aaa', 'bbb', 'ccc')
+foo(arg2 = 'bbb', arg1 = 'aaa', 'bbb')
+foo('aaa', 'ccc', arg5='ddd', arg2='bbb')
+foo('aaa', arg3 = 'bbb', arg2 = 'ccc', arg5='ddd')
+foo(arg5 = 'eee', arg4 = 2,  arg3 = 'ccc', arg2 = 'bbb', arg1 = 'bbb')
+
+<--------------------------->
+3.1 
+foo('aaa', 'bbb', 'ccc') and foo(arg5 = 'eee', arg4 = 2,  arg3 = 'ccc', arg2 = 'bbb', arg1 = 'bbb')
+the other function calls have either out of order arg assignments and/or double assignments of args
+
+- CORRECT ANSWER 
+    foo('aaa', 'bbb', 'ccc')
+    foo('aaa', 'ccc', arg5='ddd', arg2='bbb')
+    foo('aaa', arg3 = 'bbb', arg2 = 'ccc', arg5='ddd')
+    foo(arg5 = 'eee', arg4 = 2,  arg3 = 'ccc', arg2 = 'bbb', arg1 = 'bbb')
+
+
+<--------------------------->
+
+
+4. (10 points) Write a function that can take any number of positional arguments followed by
+any number of keyword arguments. The function then print the last positional argment and the
+last keyword arguments.
+
+<--------------------------->
+4.1 
+def foo(*args, **kwargs):
+    """Take in x num of arguments and y num of keyword arguments and print last values of each"""
+    if args: print(f"Last positional argument {args[-1]}")
+    if kwargs:
+        last_keyword_key, last_keyword_arg = list(kwargs.items())[-1]
+        print(f"Last keyword argument {last_keyword_arg}")
+
+<--------------------------->
+
+
+5 (20 points). Let the content of foo.py be the following:
+
+------------
+count = 0
+
+def printUpdateCount():
+    print(count)
+    for i in range (0, 4):
+        count = 4
+
+print(count)
+printUpdateCount()
+-------------
+
+What is the output when you run the code with 'python3 foo.py' on linprog (10 points)?
+Explain your answer (10 points)
+
+<--------------------------->
+5.1
+[reed@linprog4 hw1_files]$ python3 foo.py
+0
+Traceback (most recent call last):
+  File "/home/majors/reed/python_class/other_hw/hw1_files/foo.py", line 9, in <module>
+    printUpdateCount()
+    ~~~~~~~~~~~~~~~~^^
+  File "/home/majors/reed/python_class/other_hw/hw1_files/foo.py", line 4, in printUpdateCount
+    print(count)
+          ^^^^^
+UnboundLocalError: cannot access local variable 'count' where it is not associated with a value
+
+5.2 
+the program prints out the print on line 8 but line 9 in the printUpdateCount function the function 
+is not passed count as an argument thus it does not have access to the value of count since it has not
+been given for the function to use.
+
+<--------------------------->
+
+
+6 (20 points). What is the output of the following code segment when executed
+(10 points)? Briefly explain (10 points).
+
+def aaa(x):
+    def bbb(y):
+        c = x * x
+	return c * y
+
+    return bbb
+
+area10 = aaa(10)
+
+print(area10(3))
+print(area10(5))
+
+<--------------------------->
+6.1 
+[reed@linprog4 hw1_files]$ python3 q6.py
+  File "/home/majors/reed/python_class/other_hw/hw1_files/q6.py", line 4
+        return c * y
+    ^
+TabError: inconsistent use of tabs and spaces in indentation
+
+6.2
+This error indicates the syntax errors through spacing/tabs related to a return statement
+inside a function with two return statements
+<--------------------------->
+
+
+7 (20 points). Let a sequence of numbers be 5, 5, 3, 7, 1, 9, ...
+More precisely, the first three numbers are x_1= 5, x_2=5, and x_3 = 3.
+Following that x_i = x_{i-3} + x_{i-2} - x_{i-1}. For example,
+x_4 = x_1 + x_2 - x_3 = 5 + 5 - 3 = 7; x_5 = x_2 + x_3 - x_4 = 5 + 3 - 7 = 1;
+and so on. Write a generator for this sequence.
+
+<--------------------------->
+7.1
+def generator():
+    a, b, c = 5, 5, 3
+    yeild a
+    yield b
+    yield c
+    while true:
+        x_i = a + b - c
+        yeild x_i
+        a, b, c = b, c, x_i
+<--------------------------->

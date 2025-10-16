@@ -1,1 +1,104 @@
-still need to bring in 
+COP4521 Homework 2
+
+Name:  James Reed               FSU login: jcr22e
+
+
+1) (10 points). Let variable rate = 0.122. Write a print statement that prints
+the rate in both the raw value and the (round down) integer
+percentage format as the following using f-string:
+
+rate = 0.122 (12%)
+
+print(f"rate: {rate} | {rate.floor()}")
+
+-1.5 incorrect fstring logic 
+
+import math
+rate = 0.122
+print(f"rate: {rate} ({math.floor(rate * 100)}%)")
+
+
+2) (10 points). What is the output of the following code segment:
+
+a = [i * 2 for i in range(10)]
+print(a[:-2:3])
+
+[6, 12]
+
+-1.5 for partially incorrect slice output
+
+a[:-2] is all except the last 2 
+the :3 is every 3rd element so 0, 3, 6 indexes which are 
+[0, 6, 12] 
+
+3) (10 points). Write a function that takes two arguments, a dictionary
+dict and a keyword key, and returns True if key is in dict
+and False otherwise.
+
+def foo(container, key):
+	return key in container
+
+
+
+4) (20 points). Write a lambda function that has the same functionality as
+the following function.
+
+import math
+def isPowerOfTwo(x):
+    if 2**int(math.log2(x)) == x:
+        return True
+    else :
+        return False
+
+power_of_two = lambda x: True if 2**(math.log2(x)) == x
+
+-3 for flawed lamdba logic
+
+you forgot he else False part at the end of the lambda function
+
+5) (20 points). Complete the body of the function to count the number
+of power of 2 numbers in a list using functional programming tools.
+The body should only contain one return statement.
+
+def countPowerOfTwo(lst):
+	return [x for x in lst if 2**int(math.log2(x)) == x]
+
+
+-3 for using a list comprehension instead of functional tools and not returning a count
+
+def countPowerOfTwo(lst):
+	return len(list(filter(lambda x: 2**int(math.log2(x))  == x, lst)))
+
+
+6) (20 points). Write a class foo with three instance variables var1, var2,
+and var3. var1 should be initialized to 10 and var2 to 20 when an object
+of the class is created. var3 is initialized (to 30) when method aaa in the
+class is invoked. 
+
+class foo:
+	def __init__(self):
+		self.var1 = 10
+		self.var2 = 20
+		self.var3 = None
+
+	def aaa(self):
+		self.var3 = 30
+
+
+7) (10 points). Write a class boo that is a derived class of foo in problem 6)
+with an additional instance variable var that should be initialized to 100
+when an object of class boo is created. 
+
+class boo(foo):
+	def __init__():
+		super.__init__()
+		self.var = 100
+
+-1.5 for syntax errors in the derived class __init__(missing 'self' and incorrect 'super()' call)
+
+class boo(foo):
+	def __init__(self):
+		super().__init__()
+		self.var = 100
+
+	# hint you forgot the () on the super
