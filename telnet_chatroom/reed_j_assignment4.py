@@ -177,9 +177,9 @@ def process_cmd(user, cmd_str, cmd_count):
 
 def cmd_help(user, args):
     help_text = "" + \
-    "who                    # List all online users" + \
-    "status [user]          # " + \
-    "start <topic>          # " + \
+    "who                    # List all online users\n" + \
+    "status [user]          # \n" + \
+    "start <topic>          # \n" + \
     "rooms                  # List all current rooms" + \
     "join <room_num>        # " + \
     "leave <room_num>       # " + \
@@ -208,25 +208,25 @@ def cmd_status(user, args):
         if target not in users:
             raise ValueError("User does not exist")
         info = users[target].get("info", "No info")
-    msg = f"{target}: {info}\n"
-    mySendAll(user.sock(), msg.encode())
+    msg = f"{target}'s status: {info}\n"
+    mySendAll(user.sock, msg.encode())
 
 def cmd_start(user, args):
     if len(args) < 1:
         raise ValueError("missing args")
     topic = " ".join(args)
-    if any(rooms["topic"] == topic for r in rooms.values()):
+    if any(r.topic == topic for r in rooms.values()):
         raise ValueError("topics exists")
     new_room = Room(topic, user)
     with data_lock: 
         rooms[new_room.id] = new_room
-    mySendAll(user.sock(), f"Started room {new_room.id}: {topic}\n".encode())
+    mySendAll(user.sock, f"Started room {new_room.id}: {topic}\n".encode())
 
 def cmd_rooms(user, args):
     if not rooms:
-        mySendAll(user.sock, "No rooms.\n".encode())
+        mySendAll(user.sock, "No active rooms\n".encode())
         return
-    msg = "Rooms:\n"
+    msg = "Active rooms:\n"
     for rid, room in rooms.items():
         leader = room.leader.username if room.leader else "Closed"
         msg += f"{rid}: {room.topic} (leader: {leader}, members: {len(room.members)})\n"
@@ -241,7 +241,7 @@ def cmd_join(user, args):
             raise ValueError("Room does not exist")
         room = rooms[room_id]
         if user.username in room.members:
-            mySendAll(user.sock(), "Already in room.\n".encode())
+            mySendAll(user.sock, "Already in room.\n".encode())
             return 
         room.add_member(user)
     mySendAll(user.sock, f"Joined room {room_id}.\n".encode())
@@ -255,18 +255,21 @@ def cmd_leave(user, args):
             raise ValueError("Room does not exist")
         room = rooms[room_id]
         if user.username not in room.members:
-            raise ValueError("Not in room")
+            raise ValueError("You must join the room")
         room.remove_member(user)
-    mySendAll(user.sock, f"left room {room_id}.\n".encode())
+    mySendAll(user.sock, f"Left room {room_id}.\n".encode())
 
 def broadcast_online(msg, exclude=None, sender=None):
+    # Convert to bytes if needed
+    msg_bytes = msg.encode() if isinstance(msg, str) else msg
     with data_lock:
         for uname, uobj in online_users.items():
             if uname == exclude:
                 continue
-            if sender and uname in blocks.get(sender.username, []) or sender.username in uobj.blocked:
-                continue 
-            mySendAll(uobj.sock(), msg)
+            # Only suppress delivery if the recipient has blocked the sender
+            if sender and sender.username in uobj.blocked:
+                continue
+            mySendAll(uobj.sock, msg_bytes)
 
 def cmd_shout(user, args):
     if not args:
@@ -281,23 +284,32 @@ def cmd_tell(user, args):
     message = " ".join(args[1:])
     with data_lock:
         if target not in online_users:
-            raise ValueError("User not online")
+            raise ValueError("User is not online")
         targ_usr = online_users[target]
         if user.username in targ_usr.blocked:
-            mySendAll(user.sock(), f"Message blocked by {target}.\n".encode())
+            mySendAll(user.sock, f"Message blocked by {target}.\n".encode())
             return
     msg = f"{user.username} tells you {message}\n"
-    mySendAll(targ_usr.sock(), msg.encode())
-    mySendAll(user.sock(), f"Told {target}.\n")
+    mySendAll(targ_usr.sock, msg.encode())
+    mySendAll(user.sock, f"Told {target}.\n".encode())
 
 def cmd_info(user, args):
-    pass
+    if not args:
+        mySendAll(user.sock, f"Your info: {user.info}\n".encode())
+        return
+    new_info = " ".join(args)
+    user.info = new_info
+    with data_lock:
+        if user.username in users:
+            users[user.username]["info"] = new_info
+    save_data()
+    mySendAll(user.sock, "Info updated\n".encode())
 
 def cmd_quit(user):
-    mySendAll(user.sock(), goodbyeMsg.encode())
+    mySendAll(user.sock, goodbyeMsg.encode())
 
 def cmd_block(user, args):
-    if len(args != 1):
+    if len(args) != 1:
         raise ValueError("Incorrect format")
     target = args[0]
     if target not in users:
@@ -306,10 +318,10 @@ def cmd_block(user, args):
     with data_lock:
         blocks[user.username] = list(user.blocked)
     save_data()
-    mySendAll(user.sock(), f"Blocked {target}.\n".encode())
+    mySendAll(user.sock, f"Blocked {target}.\n".encode())
 
 def cmd_unblock(user, args):
-    if len(args != 1):
+    if len(args) != 1:
         raise ValueError("Incorrect format")
     target = args[0]
     if target not in users:
@@ -318,12 +330,12 @@ def cmd_unblock(user, args):
     with data_lock:
         blocks[user.username] = list(user.blocked)
     save_data()
-    mySendAll(user.sock(), f"Blocked {target}.\n".encode())
+    mySendAll(user.sock, f"Unblocked {target}.\n".encode())
 
 def cmd_say(user, args):
     if len(args) < 2:
         raise ValueError("Incorrect Format")
-    room_id = args[0]
+    room_id = int(args[0]) if args[0].isdigit() else -1
     msg = " ".join(args[1:])
     with data_lock:
         if room_id not in rooms:
@@ -335,7 +347,7 @@ def cmd_say(user, args):
         for mem in room.members:
             mem_usr = online_users.get(mem)
             if mem_usr and user.username not in mem_usr.blocked:
-                mySendAll(mem_usr.sock(), msg.encode())
+                mySendAll(mem_usr.sock, msg.encode())
 
 def cmd_register(user, args):
     if len(args) < 2:
@@ -346,10 +358,10 @@ def cmd_register(user, args):
             raise ValueError("User already exists")
         users[new_user] = {"password": passwd, "info": "", "online": False}
     save_data()
-    mySendAll(user, f"Registed {new_user}.\n")
+    mySendAll(user.sock, f"Registered new user '{new_user}'\n".encode())
 
 def cmd_unknown(user, args):
-    mySendAll(user.sock(), "Unsupported command. Type 'help' for list.\n")
+    mySendAll(user.sock, "Unsupported command. Type 'help' for list.\n".encode())
 
 
 """
@@ -427,10 +439,10 @@ def handleOneClient(sock):
     user.logout() # cleanup 
 
 s = socket()
-h = gethostname()
 print(sys.argv[0], sys.argv[1])
 
-s.bind((h, int(sys.argv[1])))
+# Bind to localhost so tests connecting to 127.0.0.1/localhost work
+s.bind(("127.0.0.1", int(sys.argv[1])))
 s.listen(5)
         
 while True:

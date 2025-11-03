@@ -1,0 +1,27 @@
+{
+    "jcreed": {
+        "password": null,
+        "info": "",
+        "online": false
+    },
+    "test": {
+        "password": "1234",
+        "info": "",
+        "online": false
+    },
+    "juan": {
+        "password": "4321",
+        "info": "",
+        "online": false
+    },
+    "sally": {
+        "password": "5678",
+        "info": "",
+        "online": false
+    },
+    "molly": {
+        "password": "6969",
+        "info": "",
+        "online": false
+    }
+}
