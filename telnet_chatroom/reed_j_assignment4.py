@@ -44,8 +44,10 @@ if (n != 2):
 loadMsgs()
 
 users = {} # Dict: username -> user dict
+online_users = {}
 blocks = {} # Dict: username -> list of blocked
 data_lock = Lock() # Protects from race conditions
+rooms = {}
 
 def load_data():
     """Load users and blocks from files at startup"""
@@ -71,9 +73,284 @@ def save_data():
         with open('users.json', 'w') as f: 
             json.dump(users, f, indent=4)
         with open('blocks.json', 'w') as f:
-            json.dumps(blocks, f, indent=4)
+            json.dump(blocks, f, indent=4)
 
 load_data()
+
+class User:
+    def __init__(self, username, sock, is_guest=True) -> None:
+        self.username = username
+        self.sock = sock
+        self.is_guest = is_guest
+        self.rooms = set() # Set of room IDs the user is in
+        self.info = "" # user info text
+        self.blocked = set() # Set of blocked users
+
+        with data_lock:
+            if username in users:
+                self.is_guest = False
+                self.info = users[username].get("info", "")
+                self.blocked = set(blocks.get(username, [])) # gets list of users blocked by the curr user
+            else:
+                users[username] = {"password": None, "info": "", "online": True}
+                self.is_guest = True
+            users[username]["online"] = True
+            online_users[username] = self
+            blocks[username] = list(self.blocked)
+        save_data()
+        print(f"User: {username} logged in (guest: {is_guest})")
+    
+    def logout(self):
+        """cleanup on disconnect"""
+        with data_lock:
+            if self.username in users:
+                users[self.username]["online"] = False
+                del online_users[self.username]
+        self.rooms.clear()
+        try:
+            self.sock.close()
+        except:
+            pass
+        save_data()
+
+class Room:
+    def __init__(self, topic, leader) -> None:
+        self.id = id(self)
+        self.topic = topic
+        self.leader = leader
+        self.members = set([leader.username])
+        leader.rooms.add(self.id)
+        print(f"Room {self.id} started {topic} by {leader.username}")
+
+    def add_member(self, user):
+        self.members.add(user.username)
+        user.rooms.add(self.id)
+
+    def remove_member(self, user):
+        self.members.discard(user.username)
+        user.rooms.discard(self.id)
+        if user.username == self.leader.username or not self.members: 
+            self.close()
+    
+    def close(self):
+        msg = f"Room {self.id} closed \n"
+        for mem_name in list(self.members):
+            pass # find online user and send implement broadcast helper later
+        with data_lock:
+            if self.id in rooms:
+                del rooms[self.id]
+
+def process_cmd(user, cmd_str, cmd_count):
+    parts = cmd_str.split()
+    if not parts:
+        mySendAll(user.sock, "Empty command.\n".encode())
+        return
+    command = parts[0].lower()
+    args = parts[1:]
+
+    handlers = {
+        'who': cmd_who,
+        'status': cmd_status,
+        'start': cmd_start,
+        'rooms': cmd_rooms,
+        'join': cmd_join,
+        'leave': cmd_leave,
+        'shout': cmd_shout,
+        'tell': cmd_tell,
+        'info': cmd_info,
+        'quit': lambda u, a: cmd_quit(u),
+        'exit': lambda u, a: cmd_quit(u),
+        'block': cmd_block,
+        'unblock': cmd_unblock,
+        'say': cmd_say,
+        'help': cmd_help,
+        'register': cmd_register,
+        # Default
+    }
+    handler = handlers.get(command, cmd_unknown)
+    try:
+        handler(user, args)
+    except ValueError as e:
+        mySendAll(user.sock, f"Error: {e}\n".encode())
+    except Exception as e:
+        print(f"Unhandled in {user.username}: {e}")
+
+def cmd_help(user, args):
+    help_text = "" + \
+    "who                    # List all online users" + \
+    "status [user]          # " + \
+    "start <topic>          # " + \
+    "rooms                  # List all current rooms" + \
+    "join <room_num>        # " + \
+    "leave <room_num>       # " + \
+    "shout <msg>            # " + \
+    "tell <user> <msg>      # " + \
+    "info [info_text]       # Change or show your information text" + \
+    "quit                   # Logout" + \
+    "exit                   # Logout" + \
+    "block <user>           # block a user" + \
+    "unblock <user>         # unblock a user" + \
+    "say <room_num> <msg>   # Broadcast <msg> to everyone in <room_num>" + \
+    "help                   # Print this message" + \
+    "register <user> <pwd>  # Register a new user" + \
+    "\n"
+    mySendAll(user.sock, help_text.encode())
+
+def cmd_who(user, args):
+    with data_lock:
+        online = [u for u, ud in users.items() if ud["online"]]
+    msg = "online users: " + ", ".join(online) + "\n"
+    mySendAll(user.sock, msg.encode())
+
+def cmd_status(user, args):
+    target = args[0] if args else user.username
+    with data_lock:
+        if target not in users:
+            raise ValueError("User does not exist")
+        info = users[target].get("info", "No info")
+    msg = f"{target}: {info}\n"
+    mySendAll(user.sock(), msg.encode())
+
+def cmd_start(user, args):
+    if len(args) < 1:
+        raise ValueError("missing args")
+    topic = " ".join(args)
+    if any(rooms["topic"] == topic for r in rooms.values()):
+        raise ValueError("topics exists")
+    new_room = Room(topic, user)
+    with data_lock: 
+        rooms[new_room.id] = new_room
+    mySendAll(user.sock(), f"Started room {new_room.id}: {topic}\n".encode())
+
+def cmd_rooms(user, args):
+    if not rooms:
+        mySendAll(user.sock, "No rooms.\n".encode())
+        return
+    msg = "Rooms:\n"
+    for rid, room in rooms.items():
+        leader = room.leader.username if room.leader else "Closed"
+        msg += f"{rid}: {room.topic} (leader: {leader}, members: {len(room.members)})\n"
+    mySendAll(user.sock, msg.encode())
+
+def cmd_join(user, args):
+    if len(args) != 1 or not args[0].isdigit():
+        raise ValueError("Incorrect format: join <room number>")
+    room_id = int(args[0])
+    with data_lock:
+        if room_id not in rooms:
+            raise ValueError("Room does not exist")
+        room = rooms[room_id]
+        if user.username in room.members:
+            mySendAll(user.sock(), "Already in room.\n".encode())
+            return 
+        room.add_member(user)
+    mySendAll(user.sock, f"Joined room {room_id}.\n".encode())
+
+def cmd_leave(user, args):
+    if len(args) != 1 or not args[0].isdigit():
+        raise ValueError("Incorrect format")
+    room_id = int(args[0])
+    with data_lock:
+        if room_id not in rooms:
+            raise ValueError("Room does not exist")
+        room = rooms[room_id]
+        if user.username not in room.members:
+            raise ValueError("Not in room")
+        room.remove_member(user)
+    mySendAll(user.sock, f"left room {room_id}.\n".encode())
+
+def broadcast_online(msg, exclude=None, sender=None):
+    with data_lock:
+        for uname, uobj in online_users.items():
+            if uname == exclude:
+                continue
+            if sender and uname in blocks.get(sender.username, []) or sender.username in uobj.blocked:
+                continue 
+            mySendAll(uobj.sock(), msg)
+
+def cmd_shout(user, args):
+    if not args:
+        raise ValueError("No Message")
+    msg = f"*{user.username} shouts: {' '.join(args)}*\n"
+    broadcast_online(msg, sender=user)
+
+def cmd_tell(user, args):
+    if len(args) < 2:
+        raise ValueError("Incorrect format")
+    target = args[0]
+    message = " ".join(args[1:])
+    with data_lock:
+        if target not in online_users:
+            raise ValueError("User not online")
+        targ_usr = online_users[target]
+        if user.username in targ_usr.blocked:
+            mySendAll(user.sock(), f"Message blocked by {target}.\n".encode())
+            return
+    msg = f"{user.username} tells you {message}\n"
+    mySendAll(targ_usr.sock(), msg.encode())
+    mySendAll(user.sock(), f"Told {target}.\n")
+
+def cmd_info(user, args):
+    pass
+
+def cmd_quit(user):
+    mySendAll(user.sock(), goodbyeMsg.encode())
+
+def cmd_block(user, args):
+    if len(args != 1):
+        raise ValueError("Incorrect format")
+    target = args[0]
+    if target not in users:
+        raise ValueError("User does not exist")
+    user.blocked.add(target)
+    with data_lock:
+        blocks[user.username] = list(user.blocked)
+    save_data()
+    mySendAll(user.sock(), f"Blocked {target}.\n".encode())
+
+def cmd_unblock(user, args):
+    if len(args != 1):
+        raise ValueError("Incorrect format")
+    target = args[0]
+    if target not in users:
+        raise ValueError("User does not exist")
+    user.blocked.discard(target)
+    with data_lock:
+        blocks[user.username] = list(user.blocked)
+    save_data()
+    mySendAll(user.sock(), f"Blocked {target}.\n".encode())
+
+def cmd_say(user, args):
+    if len(args) < 2:
+        raise ValueError("Incorrect Format")
+    room_id = args[0]
+    msg = " ".join(args[1:])
+    with data_lock:
+        if room_id not in rooms:
+            raise ValueError("Room does not exist")
+        room = rooms[room_id]
+        if user.username not in room.members:
+            raise ValueError("Not in room")
+        msg = f"{user.username} in {room.topic}: {msg}\n"
+        for mem in room.members:
+            mem_usr = online_users.get(mem)
+            if mem_usr and user.username not in mem_usr.blocked:
+                mySendAll(mem_usr.sock(), msg.encode())
+
+def cmd_register(user, args):
+    if len(args) < 2:
+        raise ValueError("Incorrect format: register <user> <password>")
+    new_user, passwd = args[0], args[1]
+    with data_lock:
+        if new_user in users:
+            raise ValueError("User already exists")
+        users[new_user] = {"password": passwd, "info": "", "online": False}
+    save_data()
+    mySendAll(user, f"Registed {new_user}.\n")
+
+def cmd_unknown(user, args):
+    mySendAll(user.sock(), "Unsupported command. Type 'help' for list.\n")
+
 
 """
 Send all data to sock, return 1 if successful
@@ -91,9 +368,9 @@ def mySendAll(sock, data):
                 return -1
             total_sent += sent
 
-    except Exception :
-        print("Socket send error in mySendAll.\n")
-        return -1
+    except OSError:
+        print("Socket send error.")
+        return -1 
 
     return 1
 
@@ -108,41 +385,46 @@ def handleOneClient(sock):
     mySendAll(sock, beforeLoginMsg.encode())
     mySendAll(sock, "Enter your username: ".encode())
 
-    data1 = sock.recv(1000)
-    if (len(data1) == 0) :
+    data1 = sock.recv(1000).decode().strip()
+    if not data1:
         sock.close()
         return
+    username = data1.split()[0] # First word as username
+    password = None 
+    if username in users and users[username]["password"]:
+        mySendAll(sock, "Enter password: ".encode())
+        pass_data = sock.recv(1000).decode().strip()
+        if pass_data != users[username]["password"]:
+            mySendAll(sock, "Login error: Invalid password.\n".encode())
+            sock.close()
+            return 
+        password = pass_data
     
-    data2 = data1.decode().split(' ')[0]
-    userName = data2.replace("\t", " ").replace("\n", "").replace("\r", "")
-       
-    
-    str = f"Welcome to the Internet Chat Room, {userName}!\n\n"
+    user = User(username, sock, is_guest=(password is None))
+
+    str = f"Welcome to the Internet Chat Room, {username}!\n\n"
     mySendAll(sock, str.encode())
+    if user.is_guest:
+        mySendAll(sock, "You are logged in as a guest. Use 'registar <user> <password>' to create an account \n".encode())
 
     cmdCount = 0
-    mySendAll(sock, f"<{userName}:{cmdCount}> ".encode())
+    mySendAll(sock, f"<{username}:{cmdCount}> ".encode())
     
     while True:
-        data = sock.recv(1000)
-        if (len(data) == 0):
-            print("Client closed connection")
-            sock.close()
-            break;
-
-        cmd = data.decode().replace("\t", "").replace("\n", "").replace("\r", "")
-        tmp = cmd.split()
-        command = cmd.split()[0].lower()
-        if (command == 'quit' or command == 'exit'):
-            mySendAll(sock, goodbyeMsg.encode())
-            sock.close()
+        try:
+            data = sock.recv(1000).decode().strip()
+            if not data:
+                print(f"Client {username} disconnected")
+                break
+            cmdCount += 1
+            # Route command to the real dispatcher with the User object
+            process_cmd(user, data, cmdCount)
+            # Reprint prompt after each command
+            mySendAll(sock, f"<{username}:{cmdCount}> ".encode())
+        except Exception as e:
+            print(f"Error in {username}: {e}")
             break
-        else: 
-            processCmd(userName, sock, cmd)
-
-        # send prompt
-        cmdCount = cmdCount + 1
-        mySendAll(sock, f"<{userName}:{cmdCount}> ".encode())
+    user.logout() # cleanup 
 
 s = socket()
 h = gethostname()
@@ -157,4 +439,3 @@ while True:
     p = Thread(target=handleOneClient, args=(sock,), daemon = True)
     p.start()
     
-
