@@ -14,7 +14,6 @@ import json
 import time
 import sys
 
-
 from socket import socket, gethostname
 from threading import Thread, Lock
 
@@ -67,12 +66,12 @@ if (n != 2):
 
 loadMsgs()
 
-users = {} # Dict: username -> user dict
+users = {} 
 online_users = {}
-blocks = {} # Dict: username -> list of blocked
-data_lock = Lock() # Protects from race conditions
+blocks = {}
+data_lock = Lock()
 rooms = {}
-room_seq = 1 # next room id
+room_seq = 1
 
 def load_data():
     """Load users and blocks from files at startup"""
@@ -107,9 +106,9 @@ class User:
         self.username = username
         self.sock = sock
         self.is_guest = is_guest
-        self.rooms = set() # Set of room IDs the user is in
-        self.info = "" # user info text
-        self.blocked = set() # Set of blocked users
+        self.rooms = set() 
+        self.info = ""
+        self.blocked = set()
 
         with data_lock:
             if username in users and users[username].get("password"):
@@ -120,7 +119,6 @@ class User:
                 online_users[username] = self
                 blocks.setdefault(username, list(self.blocked))
             else:
-                # GUEST SESSION
                 self.is_guest = True
 
         if not self.is_guest:
@@ -182,7 +180,7 @@ class Room:
             user.rooms.discard(self.id)
             should_close = was_leader or not self.members
             if should_close:
-                # Optional: clean members’ room sets for consistency
+                # cleanup memebers before close
                 for name in list(self.members):
                     u = online_users.get(name)
                     if u:
@@ -192,9 +190,6 @@ class Room:
                 close_msg = f"!!system!!: Room {self.id}(topic: {self.topic}) closed\n"
         if close_msg:
             broadcast_online(close_msg)
-
-
-
 
 def process_cmd(user: User, cmd_str, cmd_count):
     parts = cmd_str.split()
@@ -316,7 +311,6 @@ def cmd_leave(user, args):
     mySendAll(user.sock, f"Left room {room_id}.\n".encode())
 
 def broadcast_online(msg, exclude=None, sender=None):
-    # Convert to bytes if needed
     msg_bytes = msg.encode() if isinstance(msg, str) else msg
     with data_lock:
         targets = [
@@ -491,20 +485,17 @@ def handleOneClient(sock):
                 print(f"Client {username} disconnected")
                 break
             cmdCount += 1
-            # Route command to the real dispatcher with the User object
             should_quit = process_cmd(user, data, cmdCount)
             if should_quit: break
-            # Reprint prompt after each command
             mySendAll(sock, f"<{user.username}:{cmdCount}> ".encode())
         except Exception as e:
             print(f"Error in {username}: {e}")
             break
-    user.logout() # cleanup 
+    user.logout()
 
 s = socket()
 print(sys.argv[0], sys.argv[1])
 
-# Bind to localhost so tests connecting to 127.0.0.1/localhost work
 s.bind(("127.0.0.1", int(sys.argv[1])))
 s.listen(5)
         
@@ -512,8 +503,4 @@ while True:
     sock, addr = s.accept()
     print("Receive client connection from ", addr)
     p = Thread(target=handleOneClient, args=(sock,), daemon = True)
-
-    # The server crashes and doesn't close appropriately
-    # TODO: add a try catch to stop the program safely 
     p.start()
-    
