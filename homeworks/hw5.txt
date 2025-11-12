@@ -1,0 +1,95 @@
+COP4521 Homework 5
+
+Name: James Reed             FSU login: jcr22e
+
+
+1) (20 points). A company wants to maintain the commissions for each employee
+when the employee sells a product. An employee has two attributes,
+employee ID (Eid) and name (Name). A product has two attributes,
+product ID (Pid) and maker (Maker). Draw the ER diagram to model the data
+for this task.
+
+Entity: Employee
+    Eid (PK)
+    Name
+
+Entity: Product 
+    Pid (PK)
+    Maker
+
+Product<---m2m--->Sells<---m2m--->Employee
+
+2) (20 points) Convert the ER diagram in question 1) to equivalent
+relations.
+
+Employee(Eid, Name)
+Product(Pid, Maker)
+Sells(Eid, Pid, Commission)
+
+Write SQL queries that achieve the following: 
+
+3) (10 points) From relation Sells(bar, beer, price),
+find the bars that sell 'Bud Lite' for no more than $3.00.
+
+SELECT bar
+FROM Sells
+WHERE beer = 'Bud Lite' AND price <= 3.00;
+
+-----
+
+4) (10 points) Using relations Likes(drinker, beer) and
+Sells(bar, beer, price), find the bars that sell at least a beer that
+Sally likes, the beers (that Sally likes), and the prices. 
+
+SELECT Sells.bar, Sells.beer, Sells.price
+FROM Likes, Sells
+WHERE Likes.drinker = 'Sally' AND Likes.beer = Sells.beer;
+
+-----
+
+5) (10 points) Using relations students(Sid, SSN, LName, FName, Phone, GPA)
+and takes(Sid, course), find the student id (Sid), and first names (FName)
+and last names (LName) of students who take COP4521 and COP4610.
+
+SELECT Sid, Fname, LName
+FROM students
+WHERE Sid IN (SELECT Sid FROM takes WHERE course = 'COP4521')
+    AND Sid IN (SELECT Sid FROM takes WHERE course = 'COP4610');
+
+-----
+
+6) (10 points) Using relations Sells(bar, beer, price),
+Frequents(drinker, bar), and Likes(drinker, beer), find the average
+price of beers that Sally likes at the bars she frequents.
+
+SELECT AVG(S.price) 
+FROM Sells As S, Frequents as F, Likes as L
+WHERE L.drinker = 'Sally'
+    AND F.drinker = 'Sally'
+    AND F.bar = S.bar
+    AND L.beer = S.beer
+
+
+-----
+
+7) (20 points) Using Frequents(Drinker, bar), insert into a new
+relation Buddies(name) all of Sally and Robert's potential drinking
+buddies who frequent at least one bar that both Sally and Robert
+frequent.
+
+INSERT INTO Buddies(name)
+(
+    SELECT DISTINCT C2.Drinker 
+    FROM Frequents AS C2
+    WHERE C2.bar IN (
+        SELECT B1.bar
+        FROM Frequents AS B1, Frequents AS B2
+        WHERE B1.drinker = 'Sally'
+            AND B2.drinker = 'Robot'
+            AND B1.bar = B2.bar
+    )
+    AND C2.Drinker <> 'Sally' AND C2.Drinker <> 'Robert'
+);
+
+
+-----
