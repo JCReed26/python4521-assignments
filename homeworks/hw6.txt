@@ -1,0 +1,173 @@
+COP4521 Homework 6
+
+Name: James Reed    FSU login: jcr22e
+
+1. (20 points) Write Python SQLite3 code to create three tables: Employee
+(Eid, Name) where Eid is the key, product (Pid, Name, Manf) where Pid is
+the key, and sells (Eid, Pid, price). You can assume any appropriate data types
+for the attributes. 
+
+import sqlite3
+conn = sqlite3.connect('./sql_db/database.db)
+cur = conn.cursor()
+
+print("Database Connected")
+
+# create EMPLOYEE table
+cur.execute("CREATE TABLE EMPLOYEE(
+    Eid INTEGER PK,
+    Name TEXT
+);
+") 
+conn.commit()
+print("Employee Table Created")
+
+# create PRODUCT table
+cur.execute("CREATE TABLE PRODUCT(
+    Pid INTEGER PK,
+    Name TEXT,
+    Manf TEXT
+);
+") 
+conn.commit()
+print("Product Table Created")
+
+# create Sells table
+cur.execute("CREATE TABLE SELLS(
+    Eid INTEGER,
+    Pid INTEGER,
+    price REAL
+);
+") 
+conn.commit()
+print("Sells Table Created")
+
+conn.close()
+print("Connection Closed")
+
+---
+
+2. (20 points) Write Python3 SQLite3 code to popular the tables in Question 1
+as the follows:
+
+Employee table:
+--------------
+Eid    Name
+001    John Smith
+002    (none)
+
+Product table:
+--------------
+Pid    Name     Manf
+100    AC       (none)
+200    Model3   Telsa
+
+Sells table:
+-----------
+Eid    Pid    Price
+001    200    50,000
+002    200    20,000
+
+# Assume conn and cur 
+cur.executescript("INSERT INTO EMPLOYEE (Eid, Name) 
+    VALUES (001, 'John Smith'); 
+    INSERT INTO EMPLOYEE (Eid, Name) 
+    VALUES (002, none);
+")
+cur.execute("INSERT INTO PRODUCT (Pid, Name, Manf) 
+    VALUES (100, 'AC', none);
+    INSERT INTO PRODUCT (Pid, Name, Manf) 
+    VALUES (200, 'Model3', 'Telsa');
+")
+cur.execute("INSERT INTO SELLS (Eid, Pid, Price) 
+    VALUES (001, 200, 50000);
+    INSERT INTO SELLS (Eid, Pid, Price) 
+    VALUES (002, 200, 20000);
+")
+
+---
+
+3. (20 points) Write Python SQLite3 code to query the database in Question
+1 to find the names of all products sold by John Smith. The code must also
+display the result of the query. 
+
+# assume conn and cur
+cur.execute("
+SELECT DISTINCT p.Name
+FROM EMPLOYEE e
+JOIN SELLS s on s.Eid = e.Eid
+JOIN PRODUCT p on p.Pid = s.Pid
+WHERE e.Name = 'John Smith';")
+
+rows = cur.fetchall()
+if rows:
+    print("products sold by John Smith")
+    for (p.Name, ) in rows:
+        print(f"- {p.Name}")
+else:
+    print("no products sold by John Smith")
+
+---
+
+4. (20 points) Write the Python Flask code for the static web page
+http://127.0.0.1:50001/ and dynamic web-pages
+http://127.0.0.1:50001/user/{username} where username can be any string. The
+http://127.0.0.1:50001/ page displays "Welcome" while
+http://127.0.0.1:50001/user/{username} displays f"Hello {username}!".
+
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "Welcome"
+
+@app.route("/user/<username>")
+def greet(username):
+    return f"Hello {username}!"
+
+if __name__ == "__main__":
+    app.run(host"127.0.0.1", port=50001)
+
+---
+
+5. (20 points) Let tableVar be a variable in python. For example,
+
+        tableVar = [[1, 2, 3], ["one", "two", "three"]]
+
+Write the python Flask code (the combine of Python code and html template)
+to display the content of tableVar in an html table format in page
+http://127.0.0.1:50001/content.
+
+from flask import Flask, render_template_string
+
+app = Flask(__name__)
+
+tableVar = [[1, 2, 3], ["one", "two", "three"]]
+
+TEMPLATE = """
+<!doctype html>
+<html>
+    <head><meta charset="utf-8"><title>Content</title></head>
+    <body>
+        <table border="1" cellpadding="6">
+            <tbody>
+                {% for row in tableVar %}
+                <tr>
+                    {% for cell in row %}
+                    <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+    </body>
+</html>
+"""
+
+app.route("/content")
+def content():
+    return render_template_string(TEMPLATE, tableVar=tableVar)
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=50001)
