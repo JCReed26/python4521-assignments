@@ -1,0 +1,5 @@
+.venv
+
+*.json
+
+telnet_chatroom/blocks.json
