@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request
 from database.db import (
-    conn,
     pre_populate_data,
     get_users_data,
     get_contest_results,
