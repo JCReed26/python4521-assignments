@@ -47,9 +47,10 @@ def pre_populate_data():
     (user_count,) = cur.fetchone()
     if user_count == 0:
         users_seed = [
-            ("Alice", 28, "555-111-2222", 1, "alicepwd"),
-            ("Bob", 35, "555-222-3333", 2, "bobpwd"),
-            ("Carol", 42, "555-333-4444", 3, "carolpwd"),
+            ("PDiana", 28, "555-111-2222", 1, "alicepwd"),
+            ("TJones", 35, "555-222-3333", 2, "bobpwd"),
+            ("AMath", 42, "555-333-4444", 3, "carolpwd"),
+            ("BSmith", 37, "239-456-789", 2, "smithpwd"),
         ]
         cur.executemany(
             "INSERT INTO users (name, age, phone, security_level, password) VALUES (?, ?, ?, ?, ?)",
@@ -75,6 +76,7 @@ def pre_populate_data():
             (user_ids[0], "Chocolate Cake", 12, 5, 1),
             (user_ids[min(1, len(user_ids) - 1)], "Apple Pie", 7, 9, 2),
             (user_ids[min(2, len(user_ids) - 1)], "Blueberry Muffins", 4, 8, 3),
+            (user_ids[min(3, len(user_ids) - 1)], "Sugar Cookies", 7, 9, 3),
         ]
         cur.executemany(
             "INSERT INTO entries (user_id, item_name, votes_excellent, votes_ok, votes_bad) VALUES (?, ?, ?, ?, ?)",
@@ -84,10 +86,6 @@ def pre_populate_data():
     conn.commit()
 
 def get_contest_results():
-    """
-    Returns rows for contestResults.html table.
-    Each row: (entry_id, user_id, item_name, votes_excellent, votes_ok, votes_bad)
-    """
     cur = conn.cursor()
     cur.execute(
         """
@@ -99,10 +97,6 @@ def get_contest_results():
     return cur.fetchall()
 
 def get_users_data():
-    """
-    Returns rows for list.html users table.
-    Each row: (name, age, phone, security_level, password)
-    """
     cur = conn.cursor()
     cur.execute(
         """
@@ -114,10 +108,6 @@ def get_users_data():
     return cur.fetchall()
 
 def validate_and_submit_input(name, age, phone, security_level, password):
-    """
-    Validates inputs. On success inserts into users and returns ('success',).
-    On failure returns a list of error IDs among: 'name', 'age', 'phone', 'sec', 'pwd'.
-    """
     errors = []
 
     # Name: not empty and not spaces only
