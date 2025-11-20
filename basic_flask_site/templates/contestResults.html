@@ -1,0 +1,35 @@
+<!DOCTYPE HTML>
+<html lang = "en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Home Page</title>
+    </head>
+    <body id = "body">
+        <div id = "pg-title">
+            <table border="2">
+                <tr>
+                    <td>Entry Id</td>
+                    <td>User Id</td>
+                    <td>Name Of Baking Item </td>
+                    <td>Number of Excellent Votes</td>
+                    <td>Number of Ok Votes</td>
+                    <td>Number of Bad Votes</td>
+                </tr>
+                {% for entry in res %}
+                    <tr>
+                        <td>{{ entry[0] }}</td>
+                        <td>{{ entry[1] }}</td>
+                        <td>{{ entry[2] }}</td>
+                        <td>{{ entry[3] }}</td>
+                        <td>{{ entry[4] }}</td>
+                        <td>{{ entry[5] }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div>
+            <a href="{{ url_for('home') }}">Go back to home page</a>
+        </div>
+    </body>
+</html>

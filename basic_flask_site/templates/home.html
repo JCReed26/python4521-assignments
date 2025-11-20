@@ -2,3 +2,23 @@
 • Link - Add new Baking Contest User - (opens the add a New Baking Contest User page)
 • Link - List Baking Contest Users - (opens the List Baking Contest Users page)
 • Link - Baking Contest Results - (opens the list Contest Results page)-->
+<!DOCTYPE HTML>
+<html lang = "en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Home Page</title>
+    </head>
+    <style>
+        
+    </style>
+    <body id = "body">
+        <div id = "pg-links" class="links">
+            <a href="{{ url_for('add_new_baking_content_user') }}">Add new Baking Contest User</a>
+            <br>
+            <a href="{{ url_for('list_contest_users') }}">List Baking Contest Users</a>
+            <br>
+            <a href="{{ url_for('contest_results') }}">Baking Contest Entry Results</a>
+        </div>
+    </body>
+</html>
