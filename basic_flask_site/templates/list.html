@@ -1,0 +1,38 @@
+<!DOCTYPE HTML>
+<html lang = "en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
+        <title>Home Page</title>
+    </head>
+    <body id = "body">
+        <div id = "pg-title">
+            <table border="2">
+                <tr>
+                    <td>Name</td>
+                    <td>Age</td>
+                    <td>Phone Number</td>
+                    <td>Security Level</td>
+                    <td>Login Password</td>
+                </tr>
+
+                {% for user in res %}
+                <tr>
+                    <td>{{ user[0] }}</td>
+                    <td>{{ user[1] }}</td>
+                    <td>{{ user[2] }}</td>
+                    <td>{{ user[3] }}</td>
+                    <td>{{ user[4] }}</td>
+                </tr>
+                {% endfor %}
+
+            </table>
+        </div>
+        <div>
+            <a href="{{ url_for('home') }}">Go back to home page</a>
+        </div>
+    </body>
+</html>

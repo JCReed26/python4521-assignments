@@ -1,0 +1,28 @@
+<!--form that goes to addrec html to show errors or success-->
+<!DOCTYPE HTML>
+<html lang = "en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Home Page</title>
+    </head>
+    <body id = "body">
+        <div id = "pg-title">
+            <h2>Baking Contest User Information</h2>
+            <form method="post" action="{{ url_for('add_record_or_show_error') }}">
+                <p>Name</p>
+                <input id="name" name="name" type="text">
+                <p>Age</p>
+                <input id="age" name="age" type="text">
+                <p>Phone Number</p>
+                <input id="phone" name="phone" type="text">
+                <p>Security Level</p>
+                <input id="security_level" name="security_level" type="text">
+                <p>Login Password</p>
+                <input id="password" name="password" type="password">
+                <br> <br>
+                <button id="submit" type="submit">submit</button>
+            </form>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE HTML>
+<html lang = "en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Home Page</title>
+    </head>
+    <body id = "body">
+        {% if 'success' in res %}
+            <div id = "success">
+                <p>Query Result : Record successfully added</p>
+            </div>
+        {% endif %}
+
+        {% if 'name' in res %}
+        <div id = "name_error">
+            <p>You can not enter in an empty name</p>
+        </div>
+        {% endif %}
+
+        {% if 'phone' in res %}
+        <div id = "number_error">
+            <p>You can not enter in an empty phone number</p>
+        </div>
+        {% endif %}
+
+        {% if 'age' in res %}
+        <div id = "age_error">
+            <p>The Age must be a whole number greater than 0 and less than 121.</p>
+        </div>
+        {% endif %}
+
+        {% if 'sec' in res %}
+        <div id = "securitylevel_error">
+            <p>The SecurityLevel must be a numeric between 1 and 3.</p>
+        </div>
+        {% endif %}
+
+        {% if 'pwd' in res %}
+        <div id = "password_error">
+            <p>You can not enter in an empty pwd</p>
+        </div>
+        {% endif %}
+
+        <div id="to_home_button">
+            <a href="{{ url_for('home') }}"><h2>back to home</h2></a>
+        </div>
+    </body>
+</html>
