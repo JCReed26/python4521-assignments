@@ -1,8 +1,8 @@
 """
 Name: James Reed
 Date: 11/12/2025
-Assignment: 5
-Due Date: 11/20/2025
+Assignment: 6
+Due Date: 12/04/2025
 About this project: a simple baking competition flask website
 Assumptions: Assumes browser with functioning localhost at 127.0.0.1 and open port at 5000
 All work below was performed solely by Jimmy.

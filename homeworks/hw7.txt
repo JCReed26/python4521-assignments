@@ -1,0 +1,22 @@
+COP4521 Homework 7
+
+Name: Jimmy Reed      FSU login: jcr22e
+
+1. (10 points) What are the objectives of computer security?
+
+
+2. (10 points) Explain the terms:
+confidentiality, integrity, availability, authenticity, and accountability.
+
+3. (20 points) What is attack surface? Why is it important?
+
+4. (20 points) Explain how Feistel encryption works, what are the types of
+basic operations used for transforming plaintext to ciphertext in Feistel
+encryption? 
+
+5. (20 points) What are the differences and similarity between viruses and
+worms?
+
+6. (20 points) What are the types of firewalls? If FSU wants block all traffic
+from the university to http://www.amazon.com/. Which type of firewall
+should be used?

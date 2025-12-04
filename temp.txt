@@ -1,0 +1,3 @@
+ADMIN adminpwd 3
+Alice alicepwd 2
+Bob bobpwd 1

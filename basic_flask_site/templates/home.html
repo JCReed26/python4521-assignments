@@ -9,16 +9,48 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Home Page</title>
     </head>
-    <style>
-        
-    </style>
     <body id = "body">
         <div id = "pg-links" class="links">
-            <a href="{{ url_for('add_new_baking_content_user') }}">Add new Baking Contest User</a>
-            <br>
-            <a href="{{ url_for('list_contest_users') }}">List Baking Contest Users</a>
-            <br>
-            <a href="{{ url_for('contest_results') }}">Baking Contest Entry Results</a>
+            {% if session.username %}
+                <p>{{ session.username }}</p>
+
+                {% if session.security_level == 1 %}
+                    <!-- Sec level 1: name, results, add entry, logout -->
+                    <a href="{{ url_for('my_contest_results') }}">Show my Contest Entry Results</a>
+                    <br>
+                    <a href="{{ url_for('add_contest_entry_page') }}">Add new Baking Contest Entry</a>
+                    <br>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+                
+                {% elif session.security_level == 2 %}
+                    <!-- Sec level 2: Level 1 + list_users -->
+                    <a href="{{ url_for('my_contest_results') }}">Show my Contest Entry Results</a>
+                    <br>
+                    <a href="{{ url_for('add_contest_entry_page') }}">Add New Baking Contest Entry</a>
+                    <br>
+                    <a href="{{ url_for('list_contest_users') }}">List Baking Contest Users</a>
+                    <br>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+
+                {% elif session.security_level == 3 %}
+                    <!-- Sec level 3: Level 2 + add users, all results -->
+                    <a href="{{ url_for('my_contest_results') }}">Show my Contest Entry Results</a>
+                    <br>
+                    <a href="{{ url_for('add_new_baking_contest_user') }}">Add New Baking Contest User</a>
+                    <br>
+                    <a href="{{ url_for('add_contest_entry_page') }}">Add New Baking Contest Entry</a>
+                    <br>
+                    <a href="{{ url_for('list_contest_users') }}">List Baking Contest Users</a>
+                    <br>
+                    <a href="{{ url_for('contest_results') }}">Baking Contest Entry Results</a>
+                    <br>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+
+                {% endif %}
+            {% else %}
+                <!-- User not logged in, redirecting to login -->
+                {{ redirect(url_for('login')) }}
+            {% endif %}
         </div>
     </body>
 </html>
