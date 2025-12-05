@@ -4,19 +4,44 @@ Name: Jimmy Reed      FSU login: jcr22e
 
 1. (10 points) What are the objectives of computer security?
 
+The objectives of computer security is to keep data private and secure. To preserve integrity, availability, and confidentiality of information.
 
 2. (10 points) Explain the terms:
 confidentiality, integrity, availability, authenticity, and accountability.
 
+- confidentiality is keeping each users data private to their views.
+- integrity is ensuring data is changed in an authorized manner
+- availability is always having people data readily available to see 
+- authenticity is ensuring a user is who they say they are
+- accountability logging who changes what and when
+
 3. (20 points) What is attack surface? Why is it important?
+
+The attack surface is the reachable and exploitable vulnerabilities of a system. 
+It is important to understand the attack surfaces because it can show weaknesses to attacks human, network, and social.
 
 4. (20 points) Explain how Feistel encryption works, what are the types of
 basic operations used for transforming plaintext to ciphertext in Feistel
 encryption? 
 
+The Feistel encryption works by processing input in multiple rounds where data is split into two halves and a function is applied using a subkey derived from the main. The goal is multiple rounds will offer increased security.
+The types of operations used for transforming plaintext to ciphertext in Feistel encryption is substitution where text is mapped to another element, transposition where text is rearranged and product systems that involve multiple stages of substitutions and transpositions.
+
 5. (20 points) What are the differences and similarity between viruses and
 worms?
+
+Both viruses and worms are types of malware designed to replicate. 
+A virus requires code to be executed for the virus to execute and try to replicate into other executable code.
+A worm can run independent and can propagate a complete working version of itself onto other hosts on a network.
 
 6. (20 points) What are the types of firewalls? If FSU wants block all traffic
 from the university to http://www.amazon.com/. Which type of firewall
 should be used?
+
+The four types of firewalls are:
+- Packet filtering firewall 
+- Stateful inspection firewall
+- application proxy firewall
+- circuit level proxy firewall
+
+If FSU wants to block all traffic to amazon ITS would use an application proxy firewall. 
